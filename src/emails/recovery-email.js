@@ -24,8 +24,9 @@ const sendRecoveryEmail = async ({ email, name, link }) => {
     to: email,
     subject: 'Recuperación de contraseña',
     // html
-    text: `Hola ${name}! 
-    Se te ha enviado este link ${link} para que puedas recuperar tu contraseña. 
+    text: 
+    `Hola ${name}!
+    Se te ha enviado este link ${link} para que puedas recuperar tu contraseña.
     Este enlace caduca en 1h.`
   };
 

@@ -40,22 +40,22 @@ const signUp = async (req, res, next) => {
         return next(new HttpError('Signing up failed, please try again later.', 500));
     }
 
-    let token;
-    try {
-        token = jwt.sign(
-            { userId: createdUser.id, email: createdUser.email }, 
-            process.env.JWT_KEY,
-            { expiresIn: '7d' }
-        );
-    } catch (err) {
-        return next(new HttpError('Signing up failed, please try again later.', 500));
-    }
+    // let token;
+    // try {
+    //     token = jwt.sign(
+    //         { userId: createdUser.id, email: createdUser.email }, 
+    //         process.env.JWT_KEY,
+    //         { expiresIn: '7d' }
+    //     );
+    // } catch (err) {
+    //     return next(new HttpError('Signing up failed, please try again later.', 500));
+    // }
 
     res.status(201).json({ 
         userId: createdUser.id, 
         email: createdUser.email, 
-        role: createdUser.role,
-        token
+        role: createdUser.role
+        // token
     });
 };
 
@@ -96,7 +96,7 @@ const logIn = async (req, res, next) => {
             { expiresIn: '7d' }
         );
     } catch (err) {
-        return next(new HttpError('Logging failed, please try again later.', 500));
+        return next(new HttpError('Logging in failed, please try again later.', 500));
     }
     
     res.json({ 
@@ -149,11 +149,13 @@ const passwordRecovery = async (req, res, next) => {
 };
 
 const passwordReset = async (req, res, next) => {
-    const { token, newPassword } = req.body;
+
+    const { recoveryToken } = req.params;
+    const { newPassword } = req.body;
 
     let decodedToken;
     try {
-        decodedToken = jwt.verify(token, process.env.JWT_KEY);
+        decodedToken = jwt.verify(recoveryToken, process.env.JWT_KEY);
     } catch (err) {
         return next(new HttpError('Invalid or expired token.', 403));
     }
@@ -163,14 +165,20 @@ const passwordReset = async (req, res, next) => {
         user = await User.findById(decodedToken.userId);
         if (!user) return next(new HttpError('User not found.', 404));
     } catch (err) {
-        return next(new HttpError('Error finding user.', 500));
+        return next(new HttpError('Could not reset password, please try again later.', 500));
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+        return next(new HttpError('The new password is required and must be at least 6 characters long.', 400));
     }
 
     try {
-        user.password = await bcrypt.hash(newPassword, 8); // Podría ser 12, en el curso recomiendan 8
+        const hashedPassword = await bcrypt.hash(newPassword, 8); // Podría ser 12, en el curso recomiendan 8
+        user.password = hashedPassword;
+        user.resetToken = undefined;
         await user.save();
     } catch (err) {
-        return next(new HttpError('Could not reset password.', 500));
+        return next(new HttpError('Could not reset password, please try again later.', 500));
     }
 
     res.status(200).json({ message: 'Password has been reset.' });
@@ -188,10 +196,10 @@ const getUsers = async (req, res, next) => {
     const limitNumber = parseInt(limit, 10);
 
     if (isNaN(pageNumber) || pageNumber <= 0) {
-        return next(new HttpError("Invalid page number", 400));
+        return next(new HttpError('Invalid page number', 400));
     }
     if (isNaN(limitNumber) || limitNumber <= 0) {
-        return next(new HttpError("Invalid limit number", 400));
+        return next(new HttpError('Invalid limit number', 400));
     }
 
     try {
@@ -202,10 +210,10 @@ const getUsers = async (req, res, next) => {
             .limit(limitNumber);
         
         if (users.length === 0) {
-        return next(new HttpError("No users found", 404));
+        return next(new HttpError('No users found', 404));
         }
     } catch (err) {
-        return next(new HttpError("Fetching users failed.", 500));
+        return next(new HttpError('Fetching users failed.', 500));
     }
     res.json({
         users: users.map((user) => user.toObject({ getters: true })),
@@ -215,16 +223,18 @@ const getUsers = async (req, res, next) => {
     });
 };
 
-const logOut = async (req, res, next) => {
-    try {
-        req.user.tokens = req.user.tokens.filter(token => token.token !== req.token);
-        await req.user.save();
+// Sirve o lo quito?
+// const logOut = async (req, res, next) => {
+//     try {
+//         req.user.tokens = req.user.tokens.filter(token => token.token !== req.token);
+//         await req.user.save();
 
-        res.send();
-    } catch (err) {
-        return next(new HttpError('Could not log out, please try again later.', 500));
-    }
-};
+//         res.send();
+//     } catch (err) {
+//         // console.error(err)
+//         return next(new HttpError('Could not log out, please try again later.', 500));
+//     }
+// };
 
 const editUser = async (req, res, next) => {
     const updates = Object.keys(req.body);
@@ -258,6 +268,6 @@ exports.logIn = logIn;
 exports.passwordRecovery = passwordRecovery;
 exports.passwordReset = passwordReset;
 exports.getUsers = getUsers;
-exports.logOut = logOut;
+// exports.logOut = logOut;
 exports.editUser = editUser;
 exports.deleteUser = deleteUser;

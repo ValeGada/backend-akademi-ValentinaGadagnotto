@@ -7,6 +7,7 @@ const checkAdmin = async (req, res, next) => {
         }
         next();
     } catch (err) {
+        console.error(err)
         return next(new HttpError('Authentication failed', 403));
     }
 };

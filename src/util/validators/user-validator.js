@@ -11,4 +11,11 @@ const createUserValidator = [
     .isIn(['admin', 'reception']).withMessage('Role must be admin or reception')
 ];
 
-module.exports = createUserValidator;
+const newPasswordValidator = [
+  body('newPassword')
+    .notEmpty().withMessage("New password is required.")
+    .isLength({ min: 6 }).withMessage("New password must be at least 6 characters long.")
+]
+
+exports.createUserValidator = createUserValidator;
+exports.newPasswordValidator = newPasswordValidator;
