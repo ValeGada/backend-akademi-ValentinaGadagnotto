@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { sendRecoveryEmail } = require('../emails/recovery-email');
+const sendRecoveryEmail = require('../emails/recovery-email');
 
 const HttpError = require('../util/errors/http-error');
 const User = require('../models/user');
@@ -141,6 +141,7 @@ const passwordRecovery = async (req, res, next) => {
             link
         });
     } catch (err) {
+        // console.error('Error al enviar el correo:', err);
         return next(new HttpError('Could not send recovery email.', 500));
     }
 

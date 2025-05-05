@@ -15,7 +15,7 @@ router.post('/login', usersControllers.logIn);
 
 router.post('/password-recovery', usersControllers.passwordRecovery);
 
-router.post('/password-recovery/:token', usersControllers.passwordReset);
+router.patch('/password-recovery/:token', usersControllers.passwordReset);
 
 router.use(checkAuth);
 router.use(checkAdmin);
