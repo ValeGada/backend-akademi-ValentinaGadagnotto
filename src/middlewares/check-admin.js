@@ -1,4 +1,3 @@
-const User = require('../models/user');
 const HttpError = require('../util/errors/http-error');
 
 const checkAdmin = async (req, res, next) => {
