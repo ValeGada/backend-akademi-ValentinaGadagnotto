@@ -31,7 +31,7 @@ const signUp = async (req, res, next) => {
         email,
         password,
         role,
-        tokens: []
+        token
     });
 
     try {
@@ -137,7 +137,6 @@ const passwordRecovery = async (req, res, next) => {
 };
 
 const passwordReset = async (req, res, next) => {
-
     const { recoveryToken } = req.params;
     const { newPassword } = req.body;
 
@@ -157,15 +156,22 @@ const passwordReset = async (req, res, next) => {
     }
 
     if (!newPassword || newPassword.length < 6) {
-        return next(new HttpError('The new password is required and must be at least 6 characters long.', 400));
+        return next(new HttpError('The new password is required and must contain at least 6 characters.', 400));
     }
 
     try {
-        const hashedPassword = await bcrypt.hash(newPassword, 8); // Podría ser 12, en el curso recomiendan 8
-        user.password = hashedPassword;
-        user.resetToken = undefined;
+        user.password = newPassword;
+
+        const newToken = jwt.sign(
+            { userId: user.id, email: user.email, role: user.role },
+            process.env.JWT_KEY,
+            { expiresIn: '1h' }
+        );
+        user.token = newToken;
+
         await user.save();
     } catch (err) {
+        console.error(err)
         return next(new HttpError('Could not reset password, please try again later.', 500));
     }
 

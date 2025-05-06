@@ -28,15 +28,13 @@ const userSchema = new Schema({
         trim: true,
         minlength: 6,
         validate(value) {
-            if (value.toLowerCase().includes('contraseña' || 'password')) {
+            const normalize = value.toLowerCase();
+            if (normalize.includes('contraseña') || normalize.includes('password')) {
                 throw new Error('Password can not contain "contraseña" o "password"')
             }
         }
     },
-    token: { 
-        type: String, 
-        required: true 
-    },
+    token: { type: String, required: true },
     role: { type: String, enum: ['admin', 'reception'], required: true }
 }, { 
     timestamps: true 
@@ -51,8 +49,9 @@ userSchema.pre('save', async function(next) {
         } catch (err) {
             return next(err);
         }
-        next();
     }
+
+    next();
 });  
 
 module.exports = mongoose.model('User', userSchema);
