@@ -1,9 +1,8 @@
 const express = require('express');
-const { check } = require('express-validator');
 
 const usersControllers = require('../controllers/users-controllers');
 
-const { createUserValidator, newPasswordValidator } = require('../util/validators/user-validator');
+const { userValidator, newPasswordValidator } = require('../util/validators/user-validator');
 const checkAuth = require('../middlewares/check-auth');
 const checkAdmin = require('../middlewares/check-admin');
 
@@ -20,12 +19,12 @@ router.patch('/password-recovery/:recoveryToken', newPasswordValidator, usersCon
 router.use(checkAuth);
 router.use(checkAdmin);
 
-router.post('/signup', createUserValidator, usersControllers.signUp);
+router.post('/signup', userValidator, usersControllers.signUp);
 
-router.get('/users', usersControllers.getUsers);
+router.get('/', usersControllers.getUsers);
 
-router.patch('/users/:id', usersControllers.editUser);
+router.patch('/:id', userValidator, usersControllers.editUser);
 
-router.delete('/users/:id', usersControllers.deleteUser);
+router.delete('/:id', usersControllers.deleteUser);
 
 module.exports = router;

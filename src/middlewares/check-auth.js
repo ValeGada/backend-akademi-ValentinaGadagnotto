@@ -6,21 +6,24 @@ const checkAuth = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
         if(!token){
-            throw new Error('Authentication failed');
+            return next(new HttpError('No token provided', 401));
         }
-        const decoded = jwt.verify(token, process.env.JWT_KEY);
-        // const user = await User.findOne({ userId: decoded.userId, 'tokens.token': token });
-        const user = await User.findById(decoded.userId);
 
+        const decoded = jwt.verify(token, process.env.JWT_KEY);
+        if (!decoded?.userId) {
+            return next(new HttpError('Invalid token payload.', 403));
+        }
+
+        const user = await User.findById(decoded.userId);
         if (!user) {
-            throw new Error('User not found');
+            return next(new HttpError('User not found.', 404));
         }
 
         req.user = user;
         next();
     } catch (err) {
-        console.error(err)
-        return next(new HttpError('Authentication failed', 403));
+        console.error('Auth error: ', err)
+        return next(new HttpError('Authentication failed.', 403));
     }
 };
 

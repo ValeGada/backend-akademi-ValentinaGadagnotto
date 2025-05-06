@@ -93,7 +93,7 @@ const logIn = async (req, res, next) => {
         token = jwt.sign(
             { userId: existingUser.id, email: existingUser.email, role: existingUser.role },
             process.env.JWT_KEY,
-            { expiresIn: '7d' }
+            { expiresIn: '1h' }
         );
     } catch (err) {
         return next(new HttpError('Logging in failed, please try again later.', 500));
@@ -237,27 +237,40 @@ const getUsers = async (req, res, next) => {
 // };
 
 const editUser = async (req, res, next) => {
+    const { id } = req.params; 
     const updates = Object.keys(req.body);
     const allowedUpdates = ['name', 'email', 'password', 'role'];
     const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
 
     if (!isValidOperation) {
-        return res.status(400).send({ error: 'Invalid updates!' });
+        return next(new HttpError('Invalid inputs.', 400));
     }
 
     try {
-        updates.forEach(update => req.user[update] = req.body[update]);
-        await req.user.save();
-        res.send(req.user);
+        const user = await User.findById(id);
+        if (!user) {
+            return next(new HttpError('User not found.', 404));
+        }
+
+        updates.forEach(update => user[update] = req.body[update]);
+        await user.save();
+
+        res.send(user);
     } catch (err) {
         return next(new HttpError('Could not save changes, please try again later.', 500));
     }
 }
 
 const deleteUser = async (req, res, next) => {
+    const { id } = req.params;
+
     try {
-        await req.user.deleteOne();
-        res.send(req.user);
+        const user = await User.findById(id);
+        if (!user) {
+            return next(new HttpError('User not found.', 404));
+        }
+        await user.deleteOne();
+        res.send(user);
     } catch (err) {
         return next(new HttpError('Could not delete user, please try again later.', 500));
     }

@@ -5,20 +5,19 @@ const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
     name: { type: String, required: true },
-    surname: { type: String, required: true },
     DNI: { type: Number, required: true },
-    birth_date: { type: Date, required: true },
     email: { 
         type: String, 
         required: true, 
         unique: true, 
         trim: true, 
         lowercase: true, 
+        // duplicado en el validator de route, lo quito?
         validate(value) {
             if (!validator.isEmail(value)) {
                 throw new Error('Invalid email provided');
             }
-           }
+        }
     },
     phone_number: { 
         type: String, 

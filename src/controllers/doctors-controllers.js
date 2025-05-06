@@ -1,0 +1,132 @@
+const { validationResult } = require('express-validator');
+
+const HttpError = require('../util/errors/http-error');
+const Doctor = require('../models/doctor');
+
+const createDoctor = async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return next(new HttpError('Invalid inputs, please check your data.', 422));
+    }
+
+    const { name, DNI, email, phone_number, specialty, active } = req.body;
+    
+    let existingDoctor;
+    try {
+        existingDoctor = await Doctor.findOne({ DNI });
+    } catch (err) {
+        return next(new HttpError('Could not create doctor, please try again later.', 500));
+    }
+
+    if (existingDoctor) {
+        return next(new HttpError('It already exists a user with this DNI.', 422));
+    }
+
+    const createdDoctor = new Doctor({
+        name,
+        DNI,
+        email,
+        phone_number,
+        specialty, 
+        active
+    });
+
+    try {
+        await createdDoctor.save();
+    } catch (err) {
+        return next(new HttpError('Could not save new doctor, please try again later.', 500));
+    }
+
+    res.status(201).json({ 
+        doctorId: createdDoctor.id,
+        doctorDNI: createdDoctor.DNI,
+        email: createdDoctor.email
+    });
+};
+
+const getDoctors = async (req, res, next) => {
+    const { specialty, page=1, limit=10 } = req.query;
+    
+    let doctors;
+    let totalDoctors;
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+
+    if (isNaN(pageNumber) || pageNumber <= 0) {
+        return next(new HttpError('Invalid page number', 400));
+    }
+    if (isNaN(limitNumber) || limitNumber <= 0) {
+        return next(new HttpError('Invalid limit number', 400));
+    }
+
+    let filter = {};
+    try {
+        if (specialty) filter.specialty = specialty;
+    
+        totalDoctors = await Doctor.countDocuments(filter);
+    
+        doctors = await Doctor.find(filter)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+        
+        if (doctors.length === 0) {
+            return next(new HttpError('No doctors found', 404));
+        }
+    } catch (err) {
+        return next(new HttpError('Fetching doctors failed.', 500));
+    }
+    res.json({
+        doctors: doctors.map((user) => user.toObject({ getters: true })),
+        totalDoctors,
+        totalPages: Math.ceil(totalDoctors / limitNumber),
+        currentPage: pageNumber,
+    });
+};
+
+const getDoctorById = async (req, res, next) => {
+    const doctorId = req.params.id;
+
+    let doctor;
+        try {
+            doctor = await Doctor.findById(doctorId);
+        } catch (err) {
+            return next(new HttpError('Fetching doctor failed.', 500));
+        }
+        
+        if (!doctor) {
+            return next(new HttpError('Doctor not found.', 404));
+        }
+        
+        res.json({ doctor: doctor.toObject({ getters: true }) });
+};
+
+const editDoctor = async (req, res, next) => {
+    const { id } = req.params; 
+    const updates = Object.keys(req.body);
+    const allowedUpdates = ['name', 'DNI', 'email', 'phone_number', 'specialty', 'active'];
+    const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
+
+    if (!isValidOperation) {
+        return next(new HttpError('Invalid updates.', 400));
+    }
+
+    try {
+        const doctor = await Doctor.findById(id);
+        if (!doctor) {
+            return next(new HttpError('Doctor not found.', 404));
+        }
+
+        updates.forEach(update => doctor[update] = req.body[update]);
+        await doctor.save();
+
+        res.send(doctor);
+    } catch (err) {
+        return next(new HttpError('Could not save changes, please try again later.', 500));
+    }
+};
+
+exports.createDoctor = createDoctor;
+exports.getDoctors = getDoctors;
+exports.getDoctorById = getDoctorById;
+exports.editDoctor = editDoctor;
