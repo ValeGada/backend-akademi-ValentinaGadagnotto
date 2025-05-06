@@ -33,14 +33,10 @@ const userSchema = new Schema({
             }
         }
     },
-    tokens: [
-        {
-            token: { 
-                type: String, 
-                required: true 
-            }
-        }
-    ],
+    token: { 
+        type: String, 
+        required: true 
+    },
     role: { type: String, enum: ['admin', 'reception'], required: true }
 }, { 
     timestamps: true 

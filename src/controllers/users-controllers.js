@@ -40,22 +40,10 @@ const signUp = async (req, res, next) => {
         return next(new HttpError('Signing up failed, please try again later.', 500));
     }
 
-    // let token;
-    // try {
-    //     token = jwt.sign(
-    //         { userId: createdUser.id, email: createdUser.email }, 
-    //         process.env.JWT_KEY,
-    //         { expiresIn: '7d' }
-    //     );
-    // } catch (err) {
-    //     return next(new HttpError('Signing up failed, please try again later.', 500));
-    // }
-
     res.status(201).json({ 
         userId: createdUser.id, 
         email: createdUser.email, 
         role: createdUser.role
-        // token
     });
 };
 
@@ -223,19 +211,6 @@ const getUsers = async (req, res, next) => {
     });
 };
 
-// Sirve o lo quito?
-// const logOut = async (req, res, next) => {
-//     try {
-//         req.user.tokens = req.user.tokens.filter(token => token.token !== req.token);
-//         await req.user.save();
-
-//         res.send();
-//     } catch (err) {
-//         // console.error(err)
-//         return next(new HttpError('Could not log out, please try again later.', 500));
-//     }
-// };
-
 const editUser = async (req, res, next) => {
     const { id } = req.params; 
     const updates = Object.keys(req.body);
@@ -281,6 +256,5 @@ exports.logIn = logIn;
 exports.passwordRecovery = passwordRecovery;
 exports.passwordReset = passwordReset;
 exports.getUsers = getUsers;
-// exports.logOut = logOut;
 exports.editUser = editUser;
 exports.deleteUser = deleteUser;

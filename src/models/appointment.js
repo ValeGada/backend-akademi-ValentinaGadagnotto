@@ -14,8 +14,7 @@ const productSchema = new Schema({
     },
     specialty: { type: String, required: true },
     date: { type: Date, required: true },
-    hour: { type: String, required: true },
-    state: { type: Boolean, required: true }
+    state: { type: String, enum: ['cancelado', 'confirmado'], required: true }
 }, {
     timestamps: true
 });
