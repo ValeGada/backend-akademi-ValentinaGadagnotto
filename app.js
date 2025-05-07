@@ -5,7 +5,7 @@ require('./src/db/mongoose');
 const usersRoutes = require('./src/routes/users-routes');
 const patientsRoutes = require('./src/routes/patients-routes');
 const doctorsRoutes = require('./src/routes/doctors-routes');
-// const appointmentsRoutes = require('./src/routes/appointments-routes');
+const appointmentsRoutes = require('./src/routes/appointments-routes');
 const HttpError = require('./src/util/errors/http-error');
 
 const app = express();
@@ -25,7 +25,7 @@ app.use(express.json());
 app.use('/users', usersRoutes);
 app.use('/patients', patientsRoutes);
 app.use('/doctors', doctorsRoutes);
-// app.use('/appointments', appointmentsRoutes);
+app.use('/appointments', appointmentsRoutes);
 
 // unsupported routes error
 app.use((req, res, next) => {

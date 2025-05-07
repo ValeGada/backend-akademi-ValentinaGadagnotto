@@ -17,6 +17,4 @@ router.post('/', appointmentValidator, appointmentsControllers.createAppointment
 
 router.patch('/:id', appointmentValidator, appointmentsControllers.editAppointment);
 
-router.delete('/:id', appointmentsControllers.deleteAppointment);
-
 module.exports = router;

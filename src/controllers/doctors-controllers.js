@@ -117,6 +117,16 @@ const editDoctor = async (req, res, next) => {
             return next(new HttpError('Doctor not found.', 404));
         }
 
+        // Si el doctor tiene turnos asignados, no se puede dar de baja
+        if (
+            doctor.appointments && 
+            doctor.appointments.length > 0 &&
+            updates.includes('active') && 
+            req.body.active === 'inactive'
+        ) {
+            return next(new HttpError('Cannot set doctor with assigned appointments as inactive.', 400));
+        }
+        
         updates.forEach(update => doctor[update] = req.body[update]);
         await doctor.save();
 

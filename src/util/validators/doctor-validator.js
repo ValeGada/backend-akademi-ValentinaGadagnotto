@@ -10,7 +10,7 @@ const doctorValidator = [
     body('specialty')
         .notEmpty().withMessage('Specialty is a required field.'),
     body('active')
-        .notEmpty().isBoolean().withMessage('Must be a true or false input.')
+        .isIn(['active', 'inactive']).withMessage('Must be either "active" or "inactive".')
 ];
 
 module.exports = doctorValidator;
