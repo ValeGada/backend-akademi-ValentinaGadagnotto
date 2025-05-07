@@ -209,8 +209,18 @@ const createAppointment = async (req, res, next) => {
 
 const editAppointment = async (req, res, next) => {
     const { id } = req.params; 
-    const inputDate = new Date(req.body.date);
-    const updates = Object.keys(req.body);
+    let inputDate;
+    try {
+        inputDate = new Date(`${req.body.date}T${req.body.hour}`);
+        if (isNaN(inputDate.getTime())) {
+            return next(new HttpError('Invalid date or hour format.', 422));
+        }
+    } catch (err) {
+        return next(new HttpError('Invalid date or hour format.', 422));
+    }
+
+    // const updates = Object.keys(req.body);
+    const updates = Object.keys(req.body).filter(key => key !== 'hour');
     const allowedUpdates = ['patient', 'doctor', 'date', 'state'];
     const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
 
@@ -264,6 +274,8 @@ const editAppointment = async (req, res, next) => {
             await sess.commitTransaction();
         } catch (err) {
             return next(new HttpError('Updating patient appointment failed, please try again.', 500));
+        } finally {
+            await sess.endSession();
         }
     }
 
@@ -303,10 +315,10 @@ const editAppointment = async (req, res, next) => {
         // } catch (err) {
         //     return next(new HttpError('Could not set the appointment, please try again later.', 500));
         // }
-    
+        
+        const sess = await mongoose.startSession();
+        sess.startTransaction();
         try {
-            const sess = await mongoose.startSession();
-            sess.startTransaction();
 
             await Doctor.updateOne(
                 { _id: appointment.doctor },
@@ -328,6 +340,8 @@ const editAppointment = async (req, res, next) => {
             await sess.commitTransaction();
         } catch (err) {
             return next(new HttpError('Updating doctor appointment failed, please try again.', 500));
+        } finally {
+            await sess.endSession();
         }
     }
 
@@ -345,7 +359,14 @@ const editAppointment = async (req, res, next) => {
 
         // Resto de cambios (día+hora y confirmación/cancelación)
         updates.forEach(update => {
-            if (update !== 'patient' && update !== 'doctor') {
+            if (update === 'date') {
+                // Usar día y hora para guardar el horario completo (appointment.date)
+                const inputDate = new Date(`${req.body.date}T${req.body.hour}`);
+                if (isNaN(inputDate.getTime())) {
+                    return next(new HttpError('Invalid date or hour format.', 422));
+                }
+                appointment.date = inputDate;
+            } else if (update !== 'patient' && update !== 'doctor') {
                 appointment[update] = req.body[update];
             }
         });
@@ -355,8 +376,6 @@ const editAppointment = async (req, res, next) => {
         res.status(200).json({ message: 'Appointment updated successfully', appointment });
     } catch (err) {
         return next(new HttpError('Could not save changes, please try again later.', 500));
-    } finally {
-        await sess.endSession();
     }
 };
 
