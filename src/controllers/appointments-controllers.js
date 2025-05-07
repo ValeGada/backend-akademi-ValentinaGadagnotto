@@ -198,11 +198,11 @@ const createAppointment = async (req, res, next) => {
         );
 
         await sess.commitTransaction();
-        await sess.endSession();
+        sess.endSession();
     } catch (err) {
         // console.log(err);
         // await sess.abortTransaction();
-        await sess.endSession();
+        sess.endSession();
         return next(new HttpError('Creating appointment failed, please try again.', 500));
     }
 
