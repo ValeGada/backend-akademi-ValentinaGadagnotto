@@ -19,10 +19,10 @@ const userSchema = new Schema({
             }
         }
     },
-    phone_number: { 
-        type: String, 
-        validate: value => validator.isMobilePhone(value, 'any') // Nro de teléfono válido, proveniente de cualquier país
-    }, 
+    // phone_number: { 
+    //     type: String, 
+    //     validate: value => validator.isMobilePhone(value, 'any') // Nro de teléfono válido, proveniente de cualquier país
+    // }, 
     health_insurance: { type: String, required: false }
 }, { 
     timestamps: true 

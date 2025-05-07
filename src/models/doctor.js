@@ -18,10 +18,6 @@ const userSchema = new Schema({
             }
         }
     },
-    phone_number: { 
-        type: String, 
-        validate: value => validator.isMobilePhone(value, 'any') // Nro de teléfono válido, proveniente de cualquier país
-    },
     specialty: { type: String, required: true },
     active: { type: String, enum: ['active', 'inactive'], required: true }
 }, { 

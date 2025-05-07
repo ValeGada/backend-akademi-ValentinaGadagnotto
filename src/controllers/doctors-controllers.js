@@ -9,7 +9,7 @@ const createDoctor = async (req, res, next) => {
         return next(new HttpError('Invalid inputs, please check your data.', 422));
     }
 
-    const { name, DNI, email, phone_number, specialty, active } = req.body;
+    const { name, DNI, email, specialty, active } = req.body;
     
     let existingDoctor;
     try {
@@ -19,14 +19,13 @@ const createDoctor = async (req, res, next) => {
     }
 
     if (existingDoctor) {
-        return next(new HttpError('It already exists a user with this DNI.', 422));
+        return next(new HttpError('It already exists a doctor with this DNI.', 422));
     }
 
     const createdDoctor = new Doctor({
         name,
         DNI,
         email,
-        phone_number,
         specialty, 
         active
     });
@@ -104,7 +103,7 @@ const getDoctorById = async (req, res, next) => {
 const editDoctor = async (req, res, next) => {
     const { id } = req.params; 
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['name', 'DNI', 'email', 'phone_number', 'specialty', 'active'];
+    const allowedUpdates = ['name', 'DNI', 'email', 'specialty', 'active'];
     const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
 
     if (!isValidOperation) {
@@ -112,17 +111,17 @@ const editDoctor = async (req, res, next) => {
     }
 
     try {
-        const doctor = await Doctor.findById(id);
+        const doctor = await Doctor.findById(id).populate('appointments');
         if (!doctor) {
             return next(new HttpError('Doctor not found.', 404));
         }
 
         // Si el doctor tiene turnos asignados, no se puede dar de baja
         if (
-            doctor.appointments && 
-            doctor.appointments.length > 0 &&
+            req.body.active === 'inactive' &&
             updates.includes('active') && 
-            req.body.active === 'inactive'
+            doctor.appointments && 
+            doctor.appointments.length > 0
         ) {
             return next(new HttpError('Cannot set doctor with assigned appointments as inactive.', 400));
         }
@@ -130,7 +129,7 @@ const editDoctor = async (req, res, next) => {
         updates.forEach(update => doctor[update] = req.body[update]);
         await doctor.save();
 
-        res.send(doctor);
+        res.status(200).json({ doctor });
     } catch (err) {
         return next(new HttpError('Could not save changes, please try again later.', 500));
     }

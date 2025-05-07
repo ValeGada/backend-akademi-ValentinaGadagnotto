@@ -9,7 +9,7 @@ const createPatient = async (req, res, next) => {
         return next(new HttpError('Invalid inputs, please check your data.', 422));
     }
 
-    const { name, DNI, email, phone_number, health_insurance } = req.body;
+    const { name, DNI, email, health_insurance } = req.body;
     
     let existingPatient;
     try {
@@ -26,7 +26,6 @@ const createPatient = async (req, res, next) => {
         name,
         DNI,
         email,
-        phone_number,
         health_insurance
     });
 

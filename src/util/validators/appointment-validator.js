@@ -8,7 +8,7 @@ const appointmentValidator = [
             const now = new Date();
 
             if (isNaN(inputDate.getTime())) {
-                throw new Error('Date and time must form a valid datetime.');
+                throw new Error('Invalid date or hour format.');
             }
             
             if (inputDate <= now) {
