@@ -31,8 +31,8 @@ const getDoctors = async (req, res, next) => {
     try {
         // if (specialty) filter.specialty = specialty;
         if (specialty) {
-            const normalized = normalizeString(specialty);
-            filter.normalizedSpe = new RegExp(normalized, 'i'); // Coincidencia parcial, sin tildes ni mayúsculas
+            const normalizedSpe = specialty.trim();
+            filter.specialty = new RegExp(normalizedSpe, 'i'); // Coincidencia parcial, sin tildes ni mayúsculas
         }
     
         totalDoctors = await Doctor.countDocuments(filter);

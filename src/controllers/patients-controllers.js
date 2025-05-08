@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 
 const HttpError = require('../util/errors/http-error');
 const Patient = require('../models/patient');
+const Appointment = require('../models/appointment');
 
 // Normaliza strings para el filtrado
 // const normalizeString = (str) =>
@@ -150,6 +151,12 @@ const deletePatient = async (req, res, next) => {
         if (!patient) {
             return next(new HttpError('Patient not found.', 404));
         }
+
+        // Cancelar turnos del paciente antes de eliminarlo
+        await Appointment.updateMany(
+            { patient: id },
+            { $set: { state: 'canceled' } }
+        );
 
         await patient.deleteOne();
         res.send(patient);

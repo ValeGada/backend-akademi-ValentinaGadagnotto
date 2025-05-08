@@ -120,7 +120,7 @@ const createAppointment = async (req, res, next) => {
         return next(new HttpError('Could not check appointment availability.', 500));
     }
 
-    if (existingAppointment) {
+    if (existingAppointment.state === 'confirmed') {
         return next(new HttpError('This doctor already has an appointment at this exact day and time.', 422));
     }
 
