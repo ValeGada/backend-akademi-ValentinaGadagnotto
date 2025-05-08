@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
+const sendConfirmationEmail = require('../emails/appointment-confirmation-email');
 
 const HttpError = require('../util/errors/http-error');
 const Appointment = require('../models/appointment');
@@ -115,12 +116,16 @@ const createAppointment = async (req, res, next) => {
     // Validación para evitar duplicaciones
     let existingAppointment;
     try {
-        existingAppointment = await Appointment.findOne({ doctor, date: inputDate });
+        existingAppointment = await Appointment.findOne({ 
+            doctor, 
+            date: inputDate,
+            state: 'confirmed'
+        });
     } catch (err) {
         return next(new HttpError('Could not check appointment availability.', 500));
     }
 
-    if (existingAppointment.state === 'confirmed') {
+    if (existingAppointment && existingAppointment.state === 'confirmed') {
         return next(new HttpError('This doctor already has an appointment at this exact day and time.', 422));
     }
 
@@ -134,7 +139,8 @@ const createAppointment = async (req, res, next) => {
 
         const dailyCount = await Appointment.countDocuments({ 
             doctor, 
-            date: { $gte: startOfDay, $lte: endOfDay }
+            date: { $gte: startOfDay, $lte: endOfDay },
+            state: 'confirmed'
         });
 
         if (dailyCount >= 10) {
@@ -206,6 +212,19 @@ const createAppointment = async (req, res, next) => {
         return next(new HttpError('Creating appointment failed, please try again.', 500));
     }
 
+    try {
+        await sendConfirmationEmail({
+            email: patientObj.email,
+            name: patientObj.name,
+            day: date,
+            hour: req.body.hour,
+            doctor: doctorObj.name
+        });
+    } catch (err) {
+        // console.error('Error al enviar el correo:', err);
+        return next(new HttpError('Could not send appointment confirmation email.', 500));
+    }
+
     res.status(201).json({ appointment: createdAppointment.toObject({ getters: true }) });
 };
 
@@ -238,41 +257,54 @@ const editAppointment = async (req, res, next) => {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     try {
-        // Validación de duplicaciones de horario
-        const checkDoctor = doctor || appointment.doctor._id;
-        const checkDate = inputDate || appointment.date;
+        // Detectar si solo se quiere cambiar el estado del turno
+        const isOnlyChangingState = (updates.length === 1 && updates[0] === 'state');
 
-        const conflictingAppointment = await Appointment.findOne({
-            doctor: checkDoctor,
-            date: checkDate,
-            _id: { $ne: appointment._id }
-        });
+        if (!isOnlyChangingState) {
+            // Validación de duplicaciones de horario
+            const checkDoctor = doctor || appointment.doctor._id;
+            const checkDate = inputDate || appointment.date;
 
-        if (conflictingAppointment) {
-            await sess.abortTransaction();
-            sess.endSession();
-            return next(new HttpError('Doctor already has an appointment at this exact day and time.', 400));
+            const conflictingAppointment = await Appointment.findOne({
+                doctor: checkDoctor,
+                date: checkDate,
+                _id: { $ne: appointment._id }
+            });
+
+            if (conflictingAppointment) {
+                await sess.abortTransaction();
+                sess.endSession();
+                return next(new HttpError('Doctor already has an appointment at this exact day and time.', 400));
+            }
+
+            // Validación de turnos por día
+            const startOfDay = new Date(inputDate);
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const endOfDay = new Date(inputDate);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            // Verificación si el turno se mantiene en el mismo doctor y día
+            const isSameDay =
+                appointment.doctor._id.equals(checkDoctor) &&
+                appointment.date.toISOString().slice(0, 10) === inputDate.toISOString().slice(0, 10);
+
+            // Validación del límite diario (solo si se cambia el día o el doctor)
+            if (!isSameDay) {
+                const dailyCount = await Appointment.countDocuments({ 
+                    doctor: checkDoctor, 
+                    date: { $gte: startOfDay, $lte: endOfDay },
+                    _id: { $ne: appointment._id }
+                });
+
+                if (dailyCount >= 10) {
+                    await sess.abortTransaction();
+                    sess.endSession();
+                    return next(new HttpError('This doctor already has 10 appointments on this day.', 422));
+                }
+            }
         }
-
-        // Validación de sobrecarga de doctor (hasta 10 turnos por día)
-        const startOfDay = new Date(inputDate);
-        startOfDay.setHours(0, 0, 0, 0);
-
-        const endOfDay = new Date(inputDate);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        const dailyCount = await Appointment.countDocuments({ 
-            doctor: checkDoctor, 
-            date: { $gte: startOfDay, $lte: endOfDay },
-            _id: { $ne: appointment._id }
-        });
-
-        if (dailyCount >= 10) {
-            await sess.abortTransaction();
-            sess.endSession();
-            return next(new HttpError('This doctor already has 10 appointments on this day.', 422));
-        } 
-
+        
         // Cambio de paciente
         if (patient && !appointment.patient._id.equals(patient)) {
             let newPatient;

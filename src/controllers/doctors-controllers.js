@@ -1,15 +1,17 @@
 const { validationResult } = require('express-validator');
+const PDFDocument = require('pdfkit');
 
 const HttpError = require('../util/errors/http-error');
 const Doctor = require('../models/doctor');
+const Appointment = require('../models/appointment'); 
 
 // Normaliza strings para el filtrado
-const normalizeString = (str) =>
-    str
-      .normalize("NFD") // Descompone letras con tilde (á --> a/´)
-      .replace(/[\u0300-\u036f]/g, "") // Elimina tildes, diéresis y otros diacríticos
-      .toLowerCase()
-      .trim();
+// const normalizeString = (str) =>
+//     str
+//       .normalize("NFD") // Descompone letras con tilde (á --> a/´)
+//       .replace(/[\u0300-\u036f]/g, "") // Elimina tildes, diéresis y otros diacríticos
+//       .toLowerCase()
+//       .trim();
 
 const getDoctors = async (req, res, next) => {
     const { specialty, page=1, limit=10 } = req.query;
@@ -27,16 +29,16 @@ const getDoctors = async (req, res, next) => {
         return next(new HttpError('Invalid limit number', 400));
     }
 
-    let filter = {};
+    let filter = { active: { $ne: 'inactive'} }; // Excluir doctores con estado inactivo (dados de baja)
     try {
         // if (specialty) filter.specialty = specialty;
         if (specialty) {
             const normalizedSpe = specialty.trim();
             filter.specialty = new RegExp(normalizedSpe, 'i'); // Coincidencia parcial, sin tildes ni mayúsculas
         }
-    
+
         totalDoctors = await Doctor.countDocuments(filter);
-    
+
         doctors = await Doctor.find(filter)
             .skip((pageNumber - 1) * limitNumber)
             .limit(limitNumber)
@@ -70,6 +72,55 @@ const getDoctorById = async (req, res, next) => {
         }
         
         res.json({ doctor: doctor.toObject({ getters: true }) });
+};
+
+const getTopDoctorsReport = async (req, res, next) => {
+    try {
+        const result = await Appointment.aggregate([
+            { $group: { _id: "$doctor", count: { $sum: 1 } } },
+            { $sort: { count: -1 } }, // Orden de más a menos turnos
+            { $limit: 10 }, // Opcional: top 10
+            {
+                $lookup: { // Busca dentro del doctor dentro de la colleción doctors y devuelve un array
+                    from: "doctors",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "doctorInfo"
+                }
+            },
+            { $unwind: "$doctorInfo" }, // convierte array del lookup en objeto
+            {
+                $project: { // Formatea ese objeto para incluir solo los datos solicitados (name, specialty, totalApp)
+                    _id: 0,
+                    name: "$doctorInfo.name",
+                    specialty: "$doctorInfo.specialty",
+                    totalAppointments: "$count"
+                }
+            }
+        ]);
+
+        // Crear el PDF
+        const doc = new PDFDocument();
+        res.setHeader('Content-Type', 'application/pdf'); 
+        res.setHeader('Content-Disposition', 'attachment; filename="top-doctors.pdf"');
+
+        doc.pipe(res); // Redirige la salida del PDF al response (para descarga directa del cliente)
+
+        doc.fontSize(18).text('Top Doctors Report', { align: 'center' }); // Título
+        doc.moveDown(); // Salto de línea
+
+        result.forEach((doctor, index) => { // Contenido del reporte en pdf
+            doc.fontSize(12).text(
+                `${index + 1}. Dr. ${doctor.name} (${doctor.specialty}) - ${doctor.totalAppointments} appointments`
+            );
+            doc.moveDown(0.5);
+        });
+
+        doc.end(); // Finaliza la escritura del documento
+    } catch (err) {
+        console.error(err);
+        return next(new HttpError('Could not generate report', 500));
+    }
 };
 
 const createDoctor = async (req, res, next) => {
@@ -149,5 +200,6 @@ const editDoctor = async (req, res, next) => {
 
 exports.getDoctors = getDoctors;
 exports.getDoctorById = getDoctorById;
+exports.getTopDoctorsReport = getTopDoctorsReport;
 exports.createDoctor = createDoctor;
 exports.editDoctor = editDoctor;
