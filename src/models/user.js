@@ -34,7 +34,7 @@ const userSchema = new Schema({
             }
         }
     },
-    token: { type: String, required: true },
+    token: { type: String, default: null },
     role: { type: String, enum: ['admin', 'reception'], required: true }
 }, { 
     timestamps: true 

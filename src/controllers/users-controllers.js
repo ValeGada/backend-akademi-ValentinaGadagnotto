@@ -23,15 +23,14 @@ const signUp = async (req, res, next) => {
     }
 
     if (existingUser) {
-        return next(new HttpError('It already exists a user with this email, please try to log in.', 422));
+        return next(new HttpError('It already exists a user with this email.', 422));
     }
 
     const createdUser = new User({
         name,
         email,
         password,
-        role,
-        token
+        role
     });
 
     try {

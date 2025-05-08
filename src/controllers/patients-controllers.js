@@ -3,6 +3,81 @@ const { validationResult } = require('express-validator');
 const HttpError = require('../util/errors/http-error');
 const Patient = require('../models/patient');
 
+// Normaliza strings para el filtrado
+// const normalizeString = (str) =>
+//     str
+//       .normalize("NFD") // Descompone letras con tilde (á --> a/´)
+//       .replace(/[\u0300-\u036f]/g, "") // Elimina tildes, diéresis y otros diacríticos
+//       .toLowerCase()
+//       .trim();
+
+const getPatients = async (req, res, next) => {
+    const { name, DNI, health_insurance, page=1, limit=10 } = req.query;
+    
+    let patients;
+    let totalPatients;
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+
+    if (isNaN(pageNumber) || pageNumber <= 0) {
+        return next(new HttpError('Invalid page number', 400));
+    }
+    if (isNaN(limitNumber) || limitNumber <= 0) {
+        return next(new HttpError('Invalid limit number', 400));
+    }
+
+    let filter = {};
+    try {
+        if (name) {
+            // const normalized = normalizeString(name);
+            const normalizedName = name.trim();
+            filter.name = new RegExp(normalizedName, 'i');
+        }
+        if (DNI) filter.DNI = DNI;
+        if (health_insurance) {
+            const normalizedHi = health_insurance.trim();
+            filter.health_insurance = new RegExp(normalizedHi, 'i');
+        }
+    
+        totalPatients = await Patient.countDocuments(filter);
+    
+        patients = await Patient.find(filter)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+        
+        if (patients.length === 0) {
+            return next(new HttpError('No patients found', 404));
+        }
+    } catch (err) {
+        return next(new HttpError('Fetching patients failed.', 500));
+    }
+
+    res.json({
+        patients: patients.map((user) => user.toObject({ getters: true })),
+        totalPatients,
+        totalPages: Math.ceil(totalPatients / limitNumber),
+        currentPage: pageNumber,
+    });
+};
+
+const getPatientById = async (req, res, next) => {
+    const patientId = req.params.id;
+
+    let patient;
+    try {
+        patient = await Patient.findById(patientId);
+        } catch (err) {
+            return next(new HttpError('Fetching patient failed.', 500));
+        }
+        
+        if (!patient) {
+            return next(new HttpError('Patient not found.', 404));
+        }
+        
+        res.json({ patient: patient.toObject({ getters: true }) });
+};
+
 const createPatient = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -42,65 +117,6 @@ const createPatient = async (req, res, next) => {
     });
 };
 
-const getPatients = async (req, res, next) => {
-    const { name, DNI, health_insurance, page=1, limit=10 } = req.query;
-    
-    let patients;
-    let totalPatients;
-
-    const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10);
-
-    if (isNaN(pageNumber) || pageNumber <= 0) {
-        return next(new HttpError('Invalid page number', 400));
-    }
-    if (isNaN(limitNumber) || limitNumber <= 0) {
-        return next(new HttpError('Invalid limit number', 400));
-    }
-
-    let filter = {};
-    try {
-        if (name) filter.name = name;
-        if (DNI) filter.DNI = DNI;
-        if (health_insurance) filter.health_insurance = health_insurance;
-    
-        totalPatients = await Patient.countDocuments(filter);
-    
-        patients = await Patient.find(filter)
-            .skip((pageNumber - 1) * limitNumber)
-            .limit(limitNumber)
-        
-        if (patients.length === 0) {
-            return next(new HttpError('No patients found', 404));
-        }
-    } catch (err) {
-        return next(new HttpError('Fetching patients failed.', 500));
-    }
-    res.json({
-        patients: patients.map((user) => user.toObject({ getters: true })),
-        totalPatients,
-        totalPages: Math.ceil(totalPatients / limitNumber),
-        currentPage: pageNumber,
-    });
-};
-
-const getPatientById = async (req, res, next) => {
-    const patientId = req.params.id;
-
-    let patient;
-        try {
-            patient = await Patient.findById(patientId);
-        } catch (err) {
-            return next(new HttpError('Fetching patient failed.', 500));
-        }
-        
-        if (!patient) {
-            return next(new HttpError('Patient not found.', 404));
-        }
-        
-        res.json({ patient: patient.toObject({ getters: true }) });
-};
-
 const editPatient = async (req, res, next) => {
     const { id } = req.params; 
     const updates = Object.keys(req.body);
@@ -116,10 +132,10 @@ const editPatient = async (req, res, next) => {
         if (!patient) {
             return next(new HttpError('Patient not found.', 404));
         }
-
+        
         updates.forEach(update => patient[update] = req.body[update]);
         await patient.save();
-
+        
         res.send(patient);
     } catch (err) {
         return next(new HttpError('Could not save changes, please try again later.', 500));
@@ -142,8 +158,8 @@ const deletePatient = async (req, res, next) => {
     }
 };
 
-exports.createPatient = createPatient;
 exports.getPatients = getPatients;
 exports.getPatientById = getPatientById;
+exports.createPatient = createPatient;
 exports.editPatient = editPatient;
 exports.deletePatient = deletePatient;

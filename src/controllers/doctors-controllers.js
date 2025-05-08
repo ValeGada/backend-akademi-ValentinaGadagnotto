@@ -3,6 +3,75 @@ const { validationResult } = require('express-validator');
 const HttpError = require('../util/errors/http-error');
 const Doctor = require('../models/doctor');
 
+// Normaliza strings para el filtrado
+const normalizeString = (str) =>
+    str
+      .normalize("NFD") // Descompone letras con tilde (á --> a/´)
+      .replace(/[\u0300-\u036f]/g, "") // Elimina tildes, diéresis y otros diacríticos
+      .toLowerCase()
+      .trim();
+
+const getDoctors = async (req, res, next) => {
+    const { specialty, page=1, limit=10 } = req.query;
+    
+    let doctors;
+    let totalDoctors;
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+
+    if (isNaN(pageNumber) || pageNumber <= 0) {
+        return next(new HttpError('Invalid page number', 400));
+    }
+    if (isNaN(limitNumber) || limitNumber <= 0) {
+        return next(new HttpError('Invalid limit number', 400));
+    }
+
+    let filter = {};
+    try {
+        // if (specialty) filter.specialty = specialty;
+        if (specialty) {
+            const normalized = normalizeString(specialty);
+            filter.normalizedSpe = new RegExp(normalized, 'i'); // Coincidencia parcial, sin tildes ni mayúsculas
+        }
+    
+        totalDoctors = await Doctor.countDocuments(filter);
+    
+        doctors = await Doctor.find(filter)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+        
+        if (doctors.length === 0) {
+            return next(new HttpError('No doctors found', 404));
+        }
+    } catch (err) {
+        return next(new HttpError('Fetching doctors failed.', 500));
+    }
+    res.json({
+        doctors: doctors.map((user) => user.toObject({ getters: true })),
+        totalDoctors,
+        totalPages: Math.ceil(totalDoctors / limitNumber),
+        currentPage: pageNumber,
+    });
+};
+
+const getDoctorById = async (req, res, next) => {
+    const doctorId = req.params.id;
+
+    let doctor;
+        try {
+            doctor = await Doctor.findById(doctorId);
+        } catch (err) {
+            return next(new HttpError('Fetching doctor failed.', 500));
+        }
+        
+        if (!doctor) {
+            return next(new HttpError('Doctor not found.', 404));
+        }
+        
+        res.json({ doctor: doctor.toObject({ getters: true }) });
+};
+
 const createDoctor = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -43,63 +112,6 @@ const createDoctor = async (req, res, next) => {
     });
 };
 
-const getDoctors = async (req, res, next) => {
-    const { specialty, page=1, limit=10 } = req.query;
-    
-    let doctors;
-    let totalDoctors;
-
-    const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10);
-
-    if (isNaN(pageNumber) || pageNumber <= 0) {
-        return next(new HttpError('Invalid page number', 400));
-    }
-    if (isNaN(limitNumber) || limitNumber <= 0) {
-        return next(new HttpError('Invalid limit number', 400));
-    }
-
-    let filter = {};
-    try {
-        if (specialty) filter.specialty = specialty;
-    
-        totalDoctors = await Doctor.countDocuments(filter);
-    
-        doctors = await Doctor.find(filter)
-            .skip((pageNumber - 1) * limitNumber)
-            .limit(limitNumber)
-        
-        if (doctors.length === 0) {
-            return next(new HttpError('No doctors found', 404));
-        }
-    } catch (err) {
-        return next(new HttpError('Fetching doctors failed.', 500));
-    }
-    res.json({
-        doctors: doctors.map((user) => user.toObject({ getters: true })),
-        totalDoctors,
-        totalPages: Math.ceil(totalDoctors / limitNumber),
-        currentPage: pageNumber,
-    });
-};
-
-const getDoctorById = async (req, res, next) => {
-    const doctorId = req.params.id;
-
-    let doctor;
-        try {
-            doctor = await Doctor.findById(doctorId);
-        } catch (err) {
-            return next(new HttpError('Fetching doctor failed.', 500));
-        }
-        
-        if (!doctor) {
-            return next(new HttpError('Doctor not found.', 404));
-        }
-        
-        res.json({ doctor: doctor.toObject({ getters: true }) });
-};
-
 const editDoctor = async (req, res, next) => {
     const { id } = req.params; 
     const updates = Object.keys(req.body);
@@ -135,7 +147,7 @@ const editDoctor = async (req, res, next) => {
     }
 };
 
-exports.createDoctor = createDoctor;
 exports.getDoctors = getDoctors;
 exports.getDoctorById = getDoctorById;
+exports.createDoctor = createDoctor;
 exports.editDoctor = editDoctor;
