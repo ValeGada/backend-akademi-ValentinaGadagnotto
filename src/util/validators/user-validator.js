@@ -1,17 +1,25 @@
 const { body } = require('express-validator');
 
-const userValidator = [
+const userCreateValidator = [
   body('name')
     .notEmpty().withMessage('Name is a required field'),
   body('email')
     .normalizeEmail().isEmail().withMessage('Must be a valid email address'),
   body('password')
     .isLength({ min: 6 }).withMessage('Password must contain at least 6 characters'),
-  // body('passwordConfirmation').custom((value, { req }) => {
-  //   return value === req.body.password;
-  // }),
   body('role')
     .isIn(['admin', 'reception']).withMessage('Role must be admin or reception')
+];
+
+const userEditValidator = [
+  body('name')
+    .optional(),
+  body('email')
+    .optional().normalizeEmail().isEmail().withMessage('Must be a valid email address'),
+  body('password')
+    .optional().isLength({ min: 6 }).withMessage('Password must contain at least 6 characters'),
+  body('role')
+    .optional().isIn(['admin', 'reception']).withMessage('Role must be admin or reception')
 ];
 
 const newPasswordValidator = [
@@ -20,5 +28,6 @@ const newPasswordValidator = [
     .isLength({ min: 6 }).withMessage('New password must be at least 6 characters long.')
 ];
 
-exports.userValidator = userValidator;
+exports.userCreateValidator = userCreateValidator;
+exports.userEditValidator = userEditValidator;
 exports.newPasswordValidator = newPasswordValidator;

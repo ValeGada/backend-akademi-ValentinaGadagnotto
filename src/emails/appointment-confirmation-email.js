@@ -15,9 +15,9 @@ const sendConfirmationEmail = async ({ email, name, day, hour, doctor }) => {
         subject: 'Confirmación de turno',
         text: 
             `Hola ${name}!
-            Tu turno para la fecha ${day} a las ${hour} está confirmado.
-            El profesional que te atenderá será ${doctor}.
-            Para cancelar el turno o ante cualquier duda, comunicate con nosotros.`
+        Tu turno para la fecha ${day} a las ${hour} está confirmado.
+        El profesional que te atenderá será ${doctor}.
+        Para cancelar el turno o ante cualquier consulta, comunicate con nosotros.`
     };
   
     try {

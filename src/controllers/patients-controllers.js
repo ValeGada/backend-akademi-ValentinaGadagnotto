@@ -35,7 +35,12 @@ const getPatients = async (req, res, next) => {
             const normalizedName = name.trim();
             filter.name = new RegExp(normalizedName, 'i');
         }
-        if (DNI) filter.DNI = DNI;
+        
+        if (DNI) {
+            const normalizedDNI = DNI.trim();
+            filter.DNI = new RegExp(normalizedDNI, 'i');
+        }
+
         if (health_insurance) {
             const normalizedHi = health_insurance.trim();
             filter.health_insurance = new RegExp(normalizedHi, 'i');

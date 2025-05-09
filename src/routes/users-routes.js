@@ -2,7 +2,7 @@ const express = require('express');
 
 const usersControllers = require('../controllers/users-controllers');
 
-const { userValidator, newPasswordValidator } = require('../util/validators/user-validator');
+const { userCreateValidator, userEditValidator, newPasswordValidator } = require('../util/validators/user-validator');
 const checkAuth = require('../middlewares/check-auth');
 const checkAdmin = require('../middlewares/check-admin');
 
@@ -18,11 +18,11 @@ router.patch('/password-recovery/:recoveryToken', newPasswordValidator, usersCon
 router.use(checkAuth);
 router.use(checkAdmin);
 
-router.post('/signup', userValidator, usersControllers.signUp);
+router.post('/signup', userCreateValidator, usersControllers.signUp);
 
 router.get('/', usersControllers.getUsers);
 
-router.patch('/:id', userValidator, usersControllers.editUser);
+router.patch('/:id', userEditValidator, usersControllers.editUser);
 
 router.delete('/:id', usersControllers.deleteUser);
 

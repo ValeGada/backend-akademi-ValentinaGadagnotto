@@ -71,12 +71,17 @@ const getDoctorById = async (req, res, next) => {
             return next(new HttpError('Doctor not found.', 404));
         }
         
+        if (doctor.active === 'inactive') {
+            return next(new HttpError('Inactive doctor found, cannot access.', 500));
+        }
+
         res.json({ doctor: doctor.toObject({ getters: true }) });
 };
 
 const getTopDoctorsReport = async (req, res, next) => {
     try {
         const result = await Appointment.aggregate([
+            { $match: { state: 'confirmed' } }, // Solo contabilizar turnos confirmados
             { $group: { _id: "$doctor", count: { $sum: 1 } } },
             { $sort: { count: -1 } }, // Orden de más a menos turnos
             { $limit: 10 }, // Opcional: top 10
@@ -89,8 +94,9 @@ const getTopDoctorsReport = async (req, res, next) => {
                 }
             },
             { $unwind: "$doctorInfo" }, // convierte array del lookup en objeto
+            { $match: { 'doctorInfo.active': 'active' } }, // Que el reporte solo incluya doctores activos
             {
-                $project: { // Formatea ese objeto para incluir solo los datos solicitados (name, specialty, totalApp)
+                $project: { // Formatea ese objeto para incluir solo los datos solicitados (name, specialty, totalAppoitments)
                     _id: 0,
                     name: "$doctorInfo.name",
                     specialty: "$doctorInfo.specialty",

@@ -2,7 +2,7 @@ const express = require('express');
 
 const appointmentsControllers = require('../controllers/appointments-controllers');
 
-const appointmentValidator = require('../util/validators/appointment-validator');
+const { appointmentCreateValidator, appointmentEditValidator } = require('../util/validators/appointment-validator');
 const checkAuth = require('../middlewares/check-auth');
 
 const router = express.Router();
@@ -13,8 +13,8 @@ router.get('/', appointmentsControllers.getAppointments);
 
 router.get('/:id', appointmentsControllers.getAppointmentById);
 
-router.post('/', appointmentValidator, appointmentsControllers.createAppointment);
+router.post('/', appointmentCreateValidator, appointmentsControllers.createAppointment);
 
-router.patch('/:id', appointmentValidator, appointmentsControllers.editAppointment);
+router.patch('/:id', appointmentEditValidator, appointmentsControllers.editAppointment);
 
 module.exports = router;
