@@ -121,7 +121,7 @@ const createPatient = async (req, res, next) => {
 const editPatient = async (req, res, next) => {
     const { id } = req.params; 
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['name', 'DNI', 'email', 'phone_number', 'health_insurance'];
+    const allowedUpdates = ['name', 'DNI', 'email', 'health_insurance'];
     const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
 
     if (!isValidOperation) {

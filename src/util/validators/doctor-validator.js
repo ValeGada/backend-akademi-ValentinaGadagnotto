@@ -1,10 +1,12 @@
 const { body } = require('express-validator');
 
-const doctorValidator = [
+const doctorCreateValidator = [
     body('name')
         .notEmpty().withMessage('Name is a required field.'),
     body('DNI')
-        .notEmpty().isInt().isLength({ min: 7 }).withMessage('DNI is a required field.'),
+        .notEmpty().withMessage('DNI is required.')
+        .isLength({ min: 7 }).withMessage('DNI must be at least 7 digits.')
+        .matches(/^\d+$/).withMessage('DNI must contain only digits.'),
     body('email')
         .normalizeEmail().isEmail().withMessage('Must be a valid email address.'),
     body('specialty')
@@ -13,4 +15,20 @@ const doctorValidator = [
         .isIn(['active', 'inactive']).withMessage('Must be either "active" or "inactive".')
 ];
 
-module.exports = doctorValidator;
+const doctorEditValidator = [
+    body('name')
+        .optional(),
+    body('DNI')
+        .optional()
+        .isLength({ min: 7 }).withMessage('DNI must be at least 7 digits.')
+        .matches(/^\d+$/).withMessage('DNI must contain only digits.'),
+    body('email')
+        .optional().normalizeEmail().isEmail().withMessage('Must be a valid email address.'),
+    body('specialty')
+        .optional(),
+    body('active')
+        .optional().isIn(['active', 'inactive']).withMessage('Must be either "active" or "inactive".')
+];
+
+exports.doctorCreateValidator = doctorCreateValidator;
+exports.doctorEditValidator = doctorEditValidator;

@@ -5,7 +5,20 @@ const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
     name: { type: String, required: true },
-    DNI: { type: Number, required: true },
+    DNI: { 
+        type: String, 
+        unique: true,
+        required: true,
+        minlength: 7, 
+        validate(value) {
+            if (!/^\d+$/.test(value)) {
+                throw new Error('DNI must contain only digits');
+            }
+            if (value.length < 7) {
+                throw new Error('DNI must be at least 7 digits long');
+            }
+        }
+    },
     email: { 
         type: String, 
         required: true, 

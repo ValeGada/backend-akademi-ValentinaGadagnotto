@@ -22,7 +22,7 @@ const checkAuth = async (req, res, next) => {
         req.user = user;
         next();
     } catch (err) {
-        console.error('Auth error: ', err)
+        // console.error('Auth error: ', err)
         return next(new HttpError('Authentication failed.', 403));
     }
 };
